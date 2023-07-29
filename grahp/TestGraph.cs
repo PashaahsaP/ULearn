@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Drawing;
 
 enum State
 {
@@ -7,9 +8,9 @@ enum State
     Visited
 };
 
-public class Program
+public class TestGraph
 {
-    static void Visit(State[,] map, int x, int y)
+    static void VisitInRecursionManner(State[,] map, int x, int y)
     {
         if (x < 0 || x >= map.GetLength(0) || y < 0 || y >= map.GetLength(1)) return;
         if (map[x, y] != State.Empty) return;
@@ -19,15 +20,52 @@ public class Program
         for (var dy = -1; dy <= 1; dy++)
             for (var dx = -1; dx <= 1; dx++)
                 if (dx != 0 && dy != 0) continue;
-                else Visit(map, x + dx, y + dy);
+                else VisitInRecursionManner(map, x + dx, y + dy);
     }
 
+    static void VisitViaStack(State[,] map)
+    {
+        var stack = new Stack<Point>();
+        stack.Push(new Point(0, 0));
+        while (stack.Count!=0)
+        {
+            var point = stack.Pop();
+            if (point.X < 0 || point.X >= map.GetLength(0) || point.Y < 0 || point.Y >= map.GetLength(1)) continue;
+            if (map[point.X, point.Y] != State.Empty) continue;
+            map[point.X, point.Y] = State.Visited;
+            Print(map);
+
+            for (var dy = -1; dy <= 1; dy++)
+            for (var dx = -1; dx <= 1; dx++)
+                if (dx != 0 && dy != 0) continue;
+                else stack.Push( new Point(point.X + dx, point.Y + dy));
+        }
+    }
+
+    static void VisitViaQueue(State[,] map)
+    {
+        var queue = new Queue<Point>();
+        queue.Enqueue(new Point(0, 0));
+        while (queue.Count != 0)
+        {
+            var point = queue.Dequeue();
+            if (point.X < 0 || point.X >= map.GetLength(0) || point.Y < 0 || point.Y >= map.GetLength(1)) continue;
+            if (map[point.X, point.Y] != State.Empty) continue;
+            map[point.X, point.Y] = State.Visited;
+            Print(map);
+
+            for (var dy = -1; dy <= 1; dy++)
+            for (var dx = -1; dx <= 1; dx++)
+                if (dx != 0 && dy != 0) continue;
+                else queue.Enqueue(new Point(point.X + dx, point.Y + dy));
+        }
+    }
     static void Main()
     {
         Console.CursorVisible = false;
-        var generatedMap =GenerateLabyrinth(50,25);
+        var generatedMap =GenerateLabyrinth(40,20);
         Print(generatedMap);
-        Visit(generatedMap,0,0);
+        VisitViaQueue(generatedMap);
         
     }
 
@@ -83,11 +121,7 @@ public class Program
          check = false;
          Validate(states, 0, 0, ref check);
          if (check)
-         {
-             
              return true;
-         }
-
          return false;
      }
 
