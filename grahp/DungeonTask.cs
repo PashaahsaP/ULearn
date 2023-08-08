@@ -1,56 +1,43 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using Avalonia.Remote.Protocol.Viewport;
-
 namespace Dungeon;
-
 public class DungeonTask
 {
 	public static MoveDirection[] FindShortestPath(Map map)
     {
-        //Stopwatch st = Stopwatch.StartNew();
-
-        var pathsToChests = BfsTask.FindPaths(map, map.InitialPosition, map.Chests);
-        IEnumerable<MoveDirection> shortestPath = new List<MoveDirection>();
+        var pathToExit = BfsTask.FindPaths(map, map.InitialPosition, new[] { map.Exit }).FirstOrDefault();// get shortest path to exit
+        //Default check
+        if (pathToExit == null) return new MoveDirection[0];//return default if not path
+        if (map.Chests.Any(chest => pathToExit.ToList().Contains(chest)))// check if path have chests and return if have
+            return GetDirections(pathToExit).Reverse().ToArray();
+        //Iterate all variants
+        var pathsToChests = BfsTask.FindPaths(map, map.InitialPosition, map.Chests);// else find paths to chestes
+        if (!pathsToChests.Any()) return GetDirections(pathToExit).ToArray();
+        IEnumerable<MoveDirection> shortestPath = new List<MoveDirection>();// shortest path for optimize method
         GetPath(ref shortestPath,map, pathsToChests);
 
-
-        if (!shortestPath.Any()) return new MoveDirection[0];
-        //st.Stop();
-        //using (StreamWriter sw = new StreamWriter(@"C:\Users\Павел\Desktop\Текстовый документ.txt",true))
-        //{
-        //    sw.WriteLine(st.ElapsedMilliseconds);
-        //}
-        return shortestPath
-            .ToArray();
+        return shortestPath.ToArray();
     }
 
     private static void GetPath(ref IEnumerable<MoveDirection> shortestPath, Map map, IEnumerable<SinglyLinkedList<Point>> pathsToChests)
     {
-        int minPath = int.MaxValue;
-        if (!pathsToChests.Any())
-            pathsToChests= new List<SinglyLinkedList<Point>>(){ new SinglyLinkedList<Point>(map.InitialPosition)};
-
+        int minPath = int.MaxValue; // for optimize search path, if current length of path more than minPath then execute continue of cycle
+       
         foreach (var path in pathsToChests)
         {
             if (path.Length>minPath) continue;
-            var prevPath = GetDirections(path);
-            var temp = BfsTask.FindPaths(map, path.Value, new Point[] { map.Exit });
-            if (temp.Any())
+            var prevPathDir = GetDirections(path);// get directions from start to chest
+            var pathFromChest = BfsTask.FindPaths(map, path.Value, new Point[] { map.Exit }).FirstOrDefault();//find path from chest to exit point
+            if (pathFromChest != null)
             {
-                var pathFromChest = temp.FirstOrDefault();
-                if ((path.Length + pathFromChest.Length)>minPath) continue;
-                var lastPath = GetDirections(pathFromChest);
-                shortestPath = lastPath.Concat(prevPath).Reverse();
-                minPath = Math.Min(path.Length + pathFromChest.Length, minPath);
+                if ((path.Length + pathFromChest.Length)>minPath) continue; // discarding  useless calculation
+                var pathFromChestDir = GetDirections(pathFromChest); //get directions from chest to finish
+                shortestPath = pathFromChestDir.Concat(prevPathDir).Reverse();
+                minPath = path.Length + pathFromChest.Length; // set new min path length
             }
         }
     }
-
 
     private static IEnumerable<MoveDirection> GetDirections(SinglyLinkedList<Point> singlyLinkedList)
     {
@@ -60,6 +47,7 @@ public class DungeonTask
             singlyLinkedList=singlyLinkedList.Previous;
         }
     }
+
     private static MoveDirection CalculteDirection(Point from, Point to)
     {
         var shifting = to - from;
@@ -69,11 +57,6 @@ public class DungeonTask
         if (shifting.Y== -1) return MoveDirection.Up;
         if (shifting.Y == 1) return MoveDirection.Down;
 
-        return 0;
+        throw new NotImplementedException();
     }
-
-
-
-
-    
 }
